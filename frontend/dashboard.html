@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Log Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Flatpickr for date picking -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Custom Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712; /* Even darker background */
+        }
+        .flatpickr-calendar {
+            background-color: #1f2937 !important;
+            border: 1px solid #374151 !important;
+        }
+        .flatpickr-day, .flatpickr-weekday {
+            color: #d1d5db !important;
+        }
+        .flatpickr-day.selected {
+            background-color: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+    </style>
+</head>
+<body class="text-gray-300">
+
+    <div class="flex h-screen bg-gray-900/50">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 p-6 flex flex-col shrink-0">
+            <h1 class="text-2xl font-bold text-white mb-8 flex items-center">
+                <svg class="w-8 h-8 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7c0-1.1.9-2 2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Log Analyzer
+            </h1>
+            <nav class="space-y-2">
+                <a href="#" class="flex items-center p-3 rounded-lg bg-blue-600/30 text-white font-semibold transition-colors">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    Dashboard
+                </a>
+                 <a href="#" class="flex items-center p-3 rounded-lg text-gray-400 hover:bg-gray-700/50 hover:text-white transition-colors">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Reports
+                </a>
+                 <a href="#" class="flex items-center p-3 rounded-lg text-gray-400 hover:bg-gray-700/50 hover:text-white transition-colors">
+                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Alerts
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8 overflow-y-auto">
+            <!-- Header & Controls -->
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                <h2 class="text-3xl font-bold text-white">Dashboard</h2>
+                <div class="flex items-center gap-4 flex-wrap">
+                    <input id="date-range-picker" class="bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Select Date Range">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm font-medium">Auto-Refresh</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="auto-refresh-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading/Error State -->
+            <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+            <div id="error-message" class="hidden bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-6"></div>
+
+            <!-- Metric Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-gray-400">Total Entries</h3><p id="total-entries" class="text-3xl font-bold text-white mt-1">0</p></div>
+                <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-gray-400">Errors</h3><p id="total-errors" class="text-3xl font-bold text-red-500 mt-1">0</p></div>
+                <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-gray-400">Warnings</h3><p id="total-warnings" class="text-3xl font-bold text-yellow-500 mt-1">0</p></div>
+                <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-gray-400">Critical</h3><p id="total-critical" class="text-3xl font-bold text-purple-500 mt-1">0</p></div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <div class="lg:col-span-2 bg-gray-800/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-lg font-semibold text-white mb-4">Events Over Time</h3><canvas id="events-chart"></canvas></div>
+                <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-lg"><h3 class="text-lg font-semibold text-white mb-4">Log Levels</h3><canvas id="log-levels-chart"></canvas></div>
+            </div>
+
+            <!-- Full Log Table -->
+            <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-white">All Log Entries</h3>
+                    <input type="text" id="search-input" class="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Search logs...">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left"><thead class="border-b border-gray-700 text-gray-400"><tr><th class="py-3 px-4">Timestamp</th><th class="py-3 px-4">Level</th><th class="py-3 px-4">Message</th></tr></thead><tbody id="log-table-body"></tbody></table>
+                </div>
+                <div class="flex justify-between items-center mt-4">
+                    <span id="page-info" class="text-sm text-gray-400"></span>
+                    <div class="flex gap-2">
+                        <button id="prev-page" class="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg">Previous</button>
+                        <button id="next-page" class="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg">Next</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION & STATE ---
+            const API_BASE_URL = 'http://localhost:8081/api'; // Use port 8081
+            let state = {
+                startDate: '',
+                endDate: '',
+                searchQuery: '',
+                currentPage: 0,
+                autoRefreshInterval: null
+            };
+            let charts = {
+                eventsChart: null,
+                logLevelsChart: null
+            };
+
+            // --- ELEMENT REFERENCES ---
+            const elements = {
+                datePicker: document.getElementById('date-range-picker'),
+                autoRefreshToggle: document.getElementById('auto-refresh-toggle'),
+                loadingOverlay: document.getElementById('loading-overlay'),
+                errorMessage: document.getElementById('error-message'),
+                searchInput: document.getElementById('search-input'),
+                prevPageBtn: document.getElementById('prev-page'),
+                nextPageBtn: document.getElementById('next-page'),
+                pageInfo: document.getElementById('page-info'),
+                logTableBody: document.getElementById('log-table-body'),
+            };
+
+            // --- INITIALIZATION ---
+            function init() {
+                // Initialize Flatpickr
+                flatpickr(elements.datePicker, {
+                    mode: "range",
+                    dateFormat: "Y-m-d",
+                    onChange: (selectedDates) => {
+                        if (selectedDates.length === 2) {
+                            state.startDate = selectedDates[0].toISOString().split('T')[0];
+                            state.endDate = selectedDates[1].toISOString().split('T')[0];
+                            state.currentPage = 0; // Reset page on date change
+                            fetchData();
+                        }
+                    }
+                });
+
+                // Add event listeners
+                elements.searchInput.addEventListener('debounce', fetchData);
+                elements.prevPageBtn.addEventListener('click', () => { if(state.currentPage > 0) { state.currentPage--; fetchPaginatedLogs(); } });
+                elements.nextPageBtn.addEventListener('click', () => { state.currentPage++; fetchPaginatedLogs(); });
+                elements.autoRefreshToggle.addEventListener('change', handleAutoRefresh);
+
+                // Debounce search input
+                let searchTimeout;
+                elements.searchInput.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        state.searchQuery = elements.searchInput.value;
+                        state.currentPage = 0; // Reset page on new search
+                        elements.searchInput.dispatchEvent(new Event('debounce'));
+                    }, 500); // 500ms delay
+                });
+                
+                fetchData(); // Initial data fetch
+            }
+
+            // --- DATA FETCHING & RENDERING ---
+            async function fetchData() {
+                showLoading();
+                try {
+                    // Fetch all data in parallel for speed
+                    await Promise.all([
+                        fetchStats(),
+                        fetchEventsOverTime(),
+                        fetchLogLevels(),
+                        fetchPaginatedLogs()
+                    ]);
+                    hideError();
+                } catch (error) {
+                    showError('Failed to fetch dashboard data. Is the backend server running?');
+                    console.error('Fetch error:', error);
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            async function fetchApi(endpoint) {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            }
+
+            async function fetchStats() {
+                const params = new URLSearchParams({ startDate: state.startDate, endDate: state.endDate });
+                const data = await fetchApi(`/stats?${params}`);
+                document.getElementById('total-entries').textContent = data.totalEntries?.toLocaleString() || '0';
+                document.getElementById('total-errors').textContent = data.ERROR?.toLocaleString() || '0';
+                document.getElementById('total-warnings').textContent = data.WARN?.toLocaleString() || '0';
+                document.getElementById('total-critical').textContent = data.CRITICAL?.toLocaleString() || '0';
+            }
+
+            async function fetchEventsOverTime() {
+                 // Using placeholder for now, replace with API call
+                const data = { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], data: [120, 190, 300, 500, 230, 420, 550] };
+                renderEventsChart(data);
+            }
+
+            async function fetchLogLevels() {
+                const params = new URLSearchParams({ startDate: state.startDate, endDate: state.endDate });
+                const data = await fetchApi(`/stats?${params}`);
+                const chartData = {
+                    labels: Object.keys(data).filter(k => k !== 'totalEntries'),
+                    data: Object.values(data).filter((v, i) => Object.keys(data)[i] !== 'totalEntries')
+                };
+                renderLogLevelsChart(chartData);
+            }
+            
+            async function fetchPaginatedLogs() {
+                const params = new URLSearchParams({
+                    page: state.currentPage,
+                    size: 10, // 10 items per page
+                    search: state.searchQuery,
+                    startDate: state.startDate,
+                    endDate: state.endDate
+                });
+                const data = await fetchApi(`/logs/paginated?${params}`);
+                renderLogTable(data);
+            }
+
+            function renderLogTable(data) {
+                elements.logTableBody.innerHTML = '';
+                if (data.content.length === 0) {
+                    elements.logTableBody.innerHTML = '<tr><td colspan="3" class="text-center py-8 text-gray-500">No logs found.</td></tr>';
+                } else {
+                    data.content.forEach(log => {
+                        const levelClass = log.log_level === 'ERROR' ? 'text-red-400' : (log.log_level === 'WARN' ? 'text-yellow-400' : 'text-blue-400');
+                        const row = `
+                            <tr class="border-b border-gray-800 hover:bg-gray-700/50">
+                                <td class="py-3 px-4 text-gray-400">${log.event_time}</td>
+                                <td class="py-3 px-4 font-semibold ${levelClass}">${log.log_level}</td>
+                                <td class="py-3 px-4">${log.message}</td>
+                            </tr>`;
+                        elements.logTableBody.innerHTML += row;
+                    });
+                }
+                // Update pagination controls
+                elements.pageInfo.textContent = `Page ${data.number + 1} of ${data.totalPages}`;
+                elements.prevPageBtn.disabled = data.first;
+                elements.nextPageBtn.disabled = data.last;
+            }
+
+            // --- CHART RENDERING ---
+            function renderEventsChart(data) {
+                if (charts.eventsChart) charts.eventsChart.destroy();
+                const ctx = document.getElementById('events-chart').getContext('2d');
+                charts.eventsChart = new Chart(ctx, { type: 'line', data: { labels: data.labels, datasets: [{ label: 'Events', data: data.data, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.2)', fill: true, tension: 0.4 }] }, options: { scales: { y: { beginAtZero: true } } } });
+            }
+
+            function renderLogLevelsChart(data) {
+                if (charts.logLevelsChart) charts.logLevelsChart.destroy();
+                const ctx = document.getElementById('log-levels-chart').getContext('2d');
+                charts.logLevelsChart = new Chart(ctx, { type: 'doughnut', data: { labels: data.labels, datasets: [{ data: data.data, backgroundColor: ['#ef4444', '#eab308', '#3b82f6', '#8b5cf6'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'right' } } } });
+            }
+
+            // --- UI & STATE HANDLERS ---
+            function handleAutoRefresh() {
+                if (elements.autoRefreshToggle.checked) {
+                    state.autoRefreshInterval = setInterval(fetchData, 5000); // Refresh every 5 seconds
+                } else {
+                    clearInterval(state.autoRefreshInterval);
+                }
+            }
+
+            function showLoading() { elements.loadingOverlay.classList.remove('hidden'); }
+            function hideLoading() { elements.loadingOverlay.classList.add('hidden'); }
+            function showError(message) { elements.errorMessage.textContent = message; elements.errorMessage.classList.remove('hidden'); }
+            function hideError() { elements.errorMessage.classList.add('hidden'); }
+
+            // --- START THE APP ---
+            init();
+        });
+    </script>
+</body>
+</html>
