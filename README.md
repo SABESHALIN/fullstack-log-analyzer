@@ -1,0 +1,1 @@
+The Log Analysis Dashboard is a full stack web application built using Java that processes, analyzes, and visualizes application logs in real time. It helps developers and system administrators quickly identify errors, warnings, and system behavior patterns through an interactive dashboard.
